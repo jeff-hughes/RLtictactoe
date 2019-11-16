@@ -1,6 +1,9 @@
 from abc import abstractmethod
 import random
+from datetime import datetime
 import numpy as np
+
+debug = False
 
 
 def print_board(state):
@@ -22,14 +25,15 @@ class TicTacToe():
         self.turn = 'X'
         self.player_turn = None
 
+        self.detailed_tally = []
         self.tally = {
             'X': 0,
-            'Y': 0,
+            'O': 0,
             'T': 0,
             'total': 0
         }
 
-    def init_game(self, player1, player2):
+    def init_game_set(self, player1, player2, num_games=1):
         self.player1 = player1
         self.player2 = player2
         self.player_turn = player1
@@ -39,24 +43,54 @@ class TicTacToe():
         else:
             self.human_player = False
 
-        self.play_game()
+        for _ in range(num_games):
+            self.play_game()
+
+        if num_games > 1:
+            print('Final score:')
+            print('{}: {} wins, {}: {} wins, {} tie games'.format(
+                  self.player1.name, self.tally['X'], self.player2.name, self.tally['O'], self.tally['T']))
+
+        save = input('Save detailed tally? (Y/n) ')
+        if save == 'Y' or save == 'y':
+            time = datetime.now().strftime("%Y%m%d_%H%M%S")
+            with open('tally_{}.txt'.format(time), 'w') as f:
+                for i in self.detailed_tally:
+                    f.write('{}\n'.format(i))
 
     def play_game(self):
+        # reset the board
+        self.state = ['_', '_', '_', '_', '_', '_', '_', '_', '_']
+        self.move_num = 0
+        self.turn = 'X'
+        self.player_turn = self.player1
+
         while self.move_num < 9:
-            print(self.state)
             move = self.player_turn.make_move(self.state)
-            print('{} chooses {}'.format(self.turn, move))
+            if debug:
+                print('{} chooses {}'.format(self.turn, move))
             self.state[move] = self.turn
+
+            if debug and not self.human_player:
+                self.print_board()
+
+            if self.human_player:
+                self.print_board()
+                print()
 
             winner = self.check_win()
             if winner != -1:
                 # game has ended
                 self.tally[winner] += 1
                 self.tally['total'] += 1
+                self.detailed_tally.append(winner)
+
                 if self.human_player:
                     # if a human is playing, we'll print a nice message
-                    if winner != 'T':
-                        print('{} wins the game!'.format(winner))
+                    if winner == 'X':
+                        print('{} wins the game!'.format(self.player1.name))
+                    elif winner == 'O':
+                        print('{} wins the game!'.format(self.player2.name))
                     else:
                         print('Tie game.')
                 else:
@@ -65,9 +99,9 @@ class TicTacToe():
                     self.player2.learn_state(self.state.copy(), winner)
 
                     # otherwise, we only want to print to screen occasionally
-                    if self.tally['total'] % 50:
-                        print('{}: {} wins, {}: {} wins, {} tie games'.format(
-                            self.player1.name, self.tally['X'], self.player2.name, self.tally['Y'], self.tally['T']))
+                    if self.tally['total'] % 50 == 0:
+                        print('After {} games... {}: {} wins, {}: {} wins, {} tie games'.format(
+                            self.tally['total'], self.player1.name, self.tally['X'], self.player2.name, self.tally['O'], self.tally['T']))
                 break
             else:
                 # switch to the other player and continue
@@ -111,7 +145,7 @@ class Player():
         pass
 
     @abstractmethod
-    def learn_state(self, prev_state, new_state, winner):
+    def learn_state(self, new_state, winner):
         pass
 
 
@@ -248,15 +282,16 @@ def main():
             which_player = random.randint(1, 2)
             if which_player == 1:
                 print('You will be Player 1, playing X.')
-                game.init_game(HumanPlayer('Puny human', 'X'),
-                               QPlayer('QPlayer', 'O', learn=False))
+                game.init_game_set(HumanPlayer('Puny human', 'X'),
+                                   QPlayer('QPlayer', 'O', learn=False))
             else:
                 print('You will be Player 2, playing O.')
-                game.init_game(QPlayer('QPlayer', 'X', learn=False),
-                               HumanPlayer('Puny human', 'O'))
+                game.init_game_set(QPlayer('QPlayer', 'X', learn=False),
+                                   HumanPlayer('Puny human', 'O'))
         else:
-            game.init_game(QPlayer('QPlayer X', 'X', learn=True),
-                           QPlayer('QPlayer O', 'O', learn=True))
+            num_games = int(input('How many games? '))
+            game.init_game_set(QPlayer('QPlayer 1', 'X', learn=True),
+                               QPlayer('QPlayer 2', 'O', learn=True), num_games)
 
 
 if __name__ == "__main__":
