@@ -7,7 +7,7 @@ Okay, really, it's just a way for me to play around with reinforcement learning 
 To play, clone the repo and run:
 
 ```
-python main.python
+python main.py
 ```
 
 It will prompt you with details about how you wish to proceed. You can pit two computer players against each other to train them, or play against the computer yourself in a head-to-head battle of wits. After a training session, you can save the detailed summary of who won each game to a text file, if so desired. 
