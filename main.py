@@ -2,6 +2,7 @@ from abc import abstractmethod
 import random
 from datetime import datetime
 import numpy as np
+import csv
 
 debug = False
 
@@ -25,12 +26,20 @@ class TicTacToe():
         self.turn = 'X'
         self.player_turn = None
 
-        self.detailed_tally = []
         self.tally = {
             'X': 0,
             'O': 0,
             'T': 0,
             'total': 0
+        }
+        self.detailed_tally = {
+            'game': [],
+            'X': [],
+            'O': [],
+            'T': [],
+            'cum_X': [],
+            'cum_O': [],
+            'cum_T': []
         }
 
     def init_game_set(self, player1, player2, num_games=1):
@@ -43,8 +52,8 @@ class TicTacToe():
         else:
             self.human_player = False
 
-        for _ in range(num_games):
-            self.play_game()
+        for i in range(num_games):
+            self.play_game(i)
 
         if num_games > 1:
             print('Final score:')
@@ -54,11 +63,14 @@ class TicTacToe():
         save = input('Save detailed tally? (Y/n) ')
         if save == 'Y' or save == 'y':
             time = datetime.now().strftime("%Y%m%d_%H%M%S")
-            with open('tally_{}.txt'.format(time), 'w') as f:
-                for i in self.detailed_tally:
-                    f.write('{}\n'.format(i))
+            keys = ['game', 'X', 'O', 'T', 'cum_X', 'cum_O', 'cum_T']
+            with open('tally_{}.csv'.format(time), 'w') as f:
+                writer = csv.writer(f)
+                writer.writerow(keys)
+                writer.writerows(
+                    zip(*[self.detailed_tally[key] for key in keys]))
 
-    def play_game(self):
+    def play_game(self, game_num):
         # reset the board
         self.state = ['_', '_', '_', '_', '_', '_', '_', '_', '_']
         self.move_num = 0
@@ -81,9 +93,7 @@ class TicTacToe():
             winner = self.check_win()
             if winner != -1:
                 # game has ended
-                self.tally[winner] += 1
-                self.tally['total'] += 1
-                self.detailed_tally.append(winner)
+                self.record_win(game_num, winner)
 
                 if self.human_player:
                     # if a human is playing, we'll print a nice message
@@ -134,6 +144,24 @@ class TicTacToe():
         else:
             return 'T'
 
+    def record_win(self, game_num, winner):
+        self.tally[winner] += 1
+        self.tally['total'] += 1
+
+        self.detailed_tally['game'].append(game_num+1)
+
+        for tag in ['X', 'O', 'T']:
+            add = 1 if winner == tag else 0
+            self.detailed_tally[tag].append(add)
+
+            if game_num > 0:
+                prev_score = self.detailed_tally['cum_{}'.format(
+                    tag)][game_num-1]
+                self.detailed_tally['cum_{}'.format(
+                    tag)].append(prev_score + add)
+            else:
+                self.detailed_tally['cum_{}'.format(tag)].append(add)
+
 
 class Player():
     def __init__(self, name, tag):
@@ -171,7 +199,7 @@ class QPlayer(Player):
         self.alpha = alpha
         self.exploration_factor = exploration_factor
         self.values = dict()
-        self.prev_state = ''
+        self.prev_state = '_________'
 
         if self.tag == 'X':
             self.op_tag = 'O'
@@ -205,7 +233,7 @@ class QPlayer(Player):
     def reward(self, winner):
         if winner is self.tag:
             R = 1
-        elif winner is None:
+        elif winner == -1:
             R = 0
         elif winner == 'T':
             R = 0.5
