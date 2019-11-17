@@ -297,29 +297,23 @@ class QPlayer(Player):
 
 
 def main():
-    # state = ['X', 'X', 'X', '_', '_', 'O', '_', '_', '_']
-    # print_board(state)
-    # print(check_win(state))
-
-    new_game = input('Do you want to start a new game? (Y/n) ')
-    if new_game == 'Y' or new_game == 'y':
-        game = TicTacToe()
-        human = input(
-            'Is there a human player? (Otherwise, we are doing training.) (Y/n) ')
-        if human == 'Y' or human == 'y':
-            which_player = random.randint(1, 2)
-            if which_player == 1:
-                print('You will be Player 1, playing X.')
-                game.init_game_set(HumanPlayer('Puny human', 'X'),
-                                   QPlayer('QPlayer', 'O', learn=False))
-            else:
-                print('You will be Player 2, playing O.')
-                game.init_game_set(QPlayer('QPlayer', 'X', learn=False),
-                                   HumanPlayer('Puny human', 'O'))
+    game = TicTacToe()
+    human = input(
+        'Is there a human player? (Otherwise, we are doing training.) (Y/n) ')
+    if human == 'Y' or human == 'y':
+        which_player = random.randint(1, 2)
+        if which_player == 1:
+            print('You will be Player 1, playing X.')
+            game.init_game_set(HumanPlayer('Puny human', 'X'),
+                               QPlayer('QPlayer', 'O', learn=False))
         else:
-            num_games = int(input('How many games? '))
-            game.init_game_set(QPlayer('QPlayer 1', 'X', learn=True),
-                               QPlayer('QPlayer 2', 'O', learn=True), num_games)
+            print('You will be Player 2, playing O.')
+            game.init_game_set(QPlayer('QPlayer', 'X', learn=False),
+                               HumanPlayer('Puny human', 'O'))
+    else:
+        num_games = int(input('How many games? '))
+        game.init_game_set(QPlayer('QPlayer 1', 'X', learn=True),
+                           QPlayer('QPlayer 2', 'O', learn=True), num_games)
 
 
 if __name__ == "__main__":
