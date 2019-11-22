@@ -2,7 +2,9 @@ from abc import abstractmethod
 import random
 from datetime import datetime
 import numpy as np
+import pickle
 import csv
+import os
 
 debug = False
 
@@ -60,15 +62,16 @@ class TicTacToe():
             print('{}: {} wins, {}: {} wins, {} tie games'.format(
                   self.player1.name, self.tally['X'], self.player2.name, self.tally['O'], self.tally['T']))
 
-        save = input('Save detailed tally? (Y/n) ')
-        if save == 'Y' or save == 'y':
-            time = datetime.now().strftime("%Y%m%d_%H%M%S")
-            keys = ['game', 'X', 'O', 'T', 'cum_X', 'cum_O', 'cum_T']
-            with open('tally_{}.csv'.format(time), 'w') as f:
-                writer = csv.writer(f)
-                writer.writerow(keys)
-                writer.writerows(
-                    zip(*[self.detailed_tally[key] for key in keys]))
+        if not self.human_player:
+            save = input('Save detailed tally? (Y/n) ')
+            if save == 'Y' or save == 'y':
+                time = datetime.now().strftime("%Y%m%d_%H%M%S")
+                keys = ['game', 'X', 'O', 'T', 'cum_X', 'cum_O', 'cum_T']
+                with open('tally_{}.csv'.format(time), 'w') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(keys)
+                    writer.writerows(
+                        zip(*[self.detailed_tally[key] for key in keys]))
 
     def play_game(self, game_num):
         # reset the board
@@ -193,13 +196,17 @@ class HumanPlayer(Player):
 
 
 class QPlayer(Player):
-    def __init__(self, name, tag, learn=True, alpha=.2, exploration_factor=1):
+    def __init__(self, name, tag, learn=True, model=None, alpha=.2, exploration_factor=1):
         super().__init__(name, tag)
         self.learn = learn
         self.alpha = alpha
         self.exploration_factor = exploration_factor
-        self.values = dict()
         self.prev_state = '_________'
+
+        if model is not None:
+            self.values = model
+        else:
+            self.values = dict()
 
         if self.tag == 'X':
             self.op_tag = 'O'
@@ -298,23 +305,46 @@ class QPlayer(Player):
 
 def main():
     game = TicTacToe()
-    human = input(
-        'Is there a human player? (Otherwise, we are doing training.) (Y/n) ')
-    if human == 'Y' or human == 'y':
-        which_player = random.randint(1, 2)
-        if which_player == 1:
-            print('You will be Player 1, playing X.')
-            game.init_game_set(HumanPlayer('Puny human', 'X'),
-                               QPlayer('QPlayer', 'O', learn=False))
-        else:
-            print('You will be Player 2, playing O.')
-            game.init_game_set(QPlayer('QPlayer', 'X', learn=False),
-                               HumanPlayer('Puny human', 'O'))
-    else:
-        num_games = int(input('How many games? '))
-        game.init_game_set(QPlayer('QPlayer 1', 'X', learn=True),
-                           QPlayer('QPlayer 2', 'O', learn=True), num_games)
+    trained_model = {}
 
+    if os.path.exists('model_values.pkl'):
+        load_trained_agent = input('Load trained model from "model_values.pkl"? (Y/n) ')
+        if load_trained_agent == 'Y' or load_trained_agent == 'y':
+            with open('model_values.pkl', 'rb') as f:
+                trained_model = pickle.load(f)
+
+    if not trained_model:
+        num_iter = int(input('How many iterations do you want to train for? '))
+        game.init_game_set(QPlayer('QPlayer 1', 'X', learn=True),
+                           QPlayer('QPlayer 2', 'O', learn=True), num_iter)
+        trained_model['X'] = game.player1.values
+        trained_model['O'] = game.player2.values
+        
+        save_model = input('Do you want to save the trained model to \
+            "model_values.pkl"? (Y/n) ')
+        if save_model == 'Y' or save_model == 'y':
+            with open('model_values.pkl', 'wb') as f:
+                pickle.dump(trained_model, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    human = input('Do you want to play against the computer? (Y/n) ')
+    if human == 'Y' or human == 'y':
+        playing = True
+        while playing:
+            game = TicTacToe()  # reset
+            which_player = random.randint(1, 2)
+            if which_player == 1:
+                print('You will be Player 1, playing X.')
+                game.init_game_set(HumanPlayer('Puny human', 'X'),
+                    QPlayer('QPlayer', 'O', learn=False, model=trained_model['O']))
+            else:
+                print('You will be Player 2, playing O.')
+                game.init_game_set(QPlayer('QPlayer', 'X', learn=False,
+                    model=trained_model['X']), HumanPlayer('Puny human', 'O'))
+            play_again = input('Do you want to play again? (Y/n) ')
+            if play_again != 'Y' and play_again != 'y':
+                break
+
+    print('k bye!')
 
 if __name__ == "__main__":
     main()
