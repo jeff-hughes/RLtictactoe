@@ -196,11 +196,11 @@ class HumanPlayer(Player):
 
 
 class QPlayer(Player):
-    def __init__(self, name, tag, learn=True, model=None, alpha=.2, exploration_factor=1):
+    def __init__(self, name, tag, learn=True, model=None, alpha=.5, explore=0):
         super().__init__(name, tag)
         self.learn = learn
         self.alpha = alpha
-        self.exploration_factor = exploration_factor
+        self.exploration_factor = explore
         self.prev_state = '_________'
 
         if model is not None:
@@ -251,7 +251,7 @@ class QPlayer(Player):
     def make_move(self, state):
         if self.learn:
             p = random.uniform(0, 1)
-            if p < self.exploration_factor:
+            if p > self.exploration_factor:
                 return self.make_optimal_move(state)
             else:
                 avail_opts = [k for k, v in enumerate(state) if v == '_']
@@ -315,8 +315,8 @@ def main():
 
     if not trained_model:
         num_iter = int(input('How many iterations do you want to train for? '))
-        game.init_game_set(QPlayer('QPlayer 1', 'X', learn=True),
-                           QPlayer('QPlayer 2', 'O', learn=True), num_iter)
+        game.init_game_set(QPlayer('QPlayer 1', 'X', learn=True, explore=.2),
+                           QPlayer('QPlayer 2', 'O', learn=True, explore=.2), num_iter)
         trained_model['X'] = game.player1.values
         trained_model['O'] = game.player2.values
         
